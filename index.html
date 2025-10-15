@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Pallone d'Oro 2 A INFO</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg-1:#0f1724;
+    --bg-2:#1b2432;
+    --accent:#7bd389;
+    --accent-2:#7aa2ff;
+    --muted:#9aa4b2;
+    --gold:#ffd166;
+    --silver:#c0c0c0;
+    --bronze:#cd7f32;
+    --radius:12px;
+    --transition:300ms cubic-bezier(.2,.9,.2,1);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Inter",sans-serif;
+    background:linear-gradient(180deg,var(--bg-1),var(--bg-2));
+    color:#e6eef8;
+    padding:14px;
+    display:flex;
+    justify-content:center;
+    min-height:100vh;
+  }
+
+  .wrap{width:100%;max-width:500px;display:flex;flex-direction:column;gap:14px;}
+
+  header.app-head{display:flex;flex-direction:column;gap:6px;position:relative}
+  .title h1{
+    margin:0;font-size:22px;font-weight:800;
+    background:linear-gradient(90deg,var(--accent-2),var(--accent));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .subtitle{color:var(--muted);font-size:0.85rem}
+  .madeby{position:absolute;top:0;right:0;font-size:0.75rem;color:var(--muted);font-style:italic}
+  .legend{font-size:0.8rem;color:var(--muted);background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:8px;align-self:flex-start;}
+  .timer{font-size:0.9rem;font-weight:600;color:var(--gold);margin-top:2px;}
+
+  .board{background:rgba(255,255,255,0.02);border-radius:var(--radius);padding:8px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 6px 16px rgba(0,0,0,0.5);}
+  .table-wrap{width:100%;overflow-x:auto;max-height:70vh;}
+
+  table.classifica{width:100%;border-collapse:separate;border-spacing:0 6px;table-layout:auto;min-width:650px;}
+  thead th{
+    position:sticky;top:0;z-index:2;
+    background:rgba(20,28,40,0.95);
+    padding:8px 6px;
+    font-size:0.8rem;font-weight:700;color:var(--gold);text-align:center;
+  }
+  th:nth-child(2),td:nth-child(2){text-align:left;padding-left:8px;}
+
+  tbody tr{
+    background:rgba(255,255,255,0.02);border-radius:8px;
+    transition:transform var(--transition), box-shadow var(--transition), background var(--transition);
+    animation:fadeInUp 0.6s ease both;
+  }
+  tbody tr:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.5);background:linear-gradient(90deg,rgba(255,255,255,0.02),rgba(255,255,255,0.05));}
+
+  th,td{padding:8px 6px;text-align:center;vertical-align:middle;font-size:0.85rem;}
+  .pos{font-weight:800;color:var(--gold);font-size:1rem;}
+  .player{display:flex;align-items:center;gap:8px;}
+  .avatar{
+    width:42px;height:42px;border-radius:12px;
+    display:grid;place-items:center;font-weight:800;font-size:0.9rem;color:#fff;
+    box-shadow:0 4px 10px rgba(0,0,0,0.35);flex-shrink:0;
+    border:2px solid transparent;
+  }
+  .pname{font-weight:700;color:#eaf6ff;font-size:0.9rem;white-space:nowrap;}
+
+  .stat{font-weight:600;color:#eaf6ff;}
+  .total{font-weight:900;color:var(--accent);}
+
+  .first .avatar{border-color:var(--gold);}
+  .second .avatar{border-color:var(--silver);}
+  .third .avatar{border-color:var(--bronze);}
+
+  @keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+
+  .table-wrap::-webkit-scrollbar{height:8px;width:8px;}
+  .table-wrap::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--accent-2),var(--accent));border-radius:10px;}
+  .table-wrap::-webkit-scrollbar-track{background:rgba(255,255,255,0.02);border-radius:10px;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="app-head">
+      <div class="title"><h1>Pallone d'Oro — 2 A INFO</h1></div>
+      <div class="subtitle">Classifica live dalla Google Sheet — aggiorna automaticamente</div>
+      <div class="madeby">Made by Russo</div>
+      <div class="legend">Gol: <strong>3</strong> • Assist: <strong>2</strong> • Salvataggi: <strong>1</strong> • Parate epiche: <strong>1</strong> • Autogol: <strong>-4</strong> • Falli: <strong>-1</strong> • Clean Sheet: <strong>1</strong></div>
+      <div class="timer" id="timer">Prossima partita: calcolo...</div>
+    </header>
+
+    <section class="board">
+      <div class="table-wrap">
+        <table class="classifica">
+          <thead>
+            <tr>
+              <th>Pos</th><th>Nome</th><th>Gol</th><th>Assist</th><th>Salvataggi</th><th>Parate epiche</th><th>Autogol</th><th>Falli</th><th>Clean Sheet</th><th>Totale</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-classifica"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+<script>
+const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vS0FfQC8yheEnyTzdetFSPHB4wD4DmymOLgcWnyIAoO7PGTS_o55r4WOf_r5ikTVlMAPxIb4XjB_wZq/pub?output=csv';
+const tbody=document.getElementById('tbody-classifica');
+
+function parseCSV(text){
+  const lines=text.trim().split('\n').slice(1);
+  return lines.map(l=>{
+    const cols=l.split(',').map(c=>c.trim());
+    return {
+      nome:cols[0],
+      gol:+cols[1]||0,
+      assist:+cols[2]||0,
+      salvataggi:+cols[3]||0,
+      parateEpiche:+cols[4]||0,
+      autogol:+cols[5]||0,
+      falli:+cols[6]||0,
+      cleanSheet:+cols[7]||0
+    };
+  });
+}
+function calc(p){return p.gol*3+p.assist*2+p.salvataggi+p.parateEpiche-p.autogol*4-p.falli+p.cleanSheet*1;}
+function initials(name){const parts=name.split(' ');return parts.length>1?(parts[0][0]+parts[1][0]).toUpperCase():name.slice(0,2).toUpperCase();}
+function randomColor(){
+  const colors=[
+    "linear-gradient(135deg,#ff9a9e,#fad0c4)",
+    "linear-gradient(135deg,#a18cd1,#fbc2eb)",
+    "linear-gradient(135deg,#f6d365,#fda085)",
+    "linear-gradient(135deg,#84fab0,#8fd3f4)",
+    "linear-gradient(135deg,#fccb90,#d57eeb)",
+    "linear-gradient(135deg,#43e97b,#38f9d7)",
+    "linear-gradient(135deg,#ff9966,#ff5e62)",
+    "linear-gradient(135deg,#7f7fd5,#86a8e7)",
+    "linear-gradient(135deg,#ff6a00,#ee0979)"
+  ];
+  return colors[Math.floor(Math.random()*colors.length)];
+}
+function render(data){
+  tbody.innerHTML='';
+  data.forEach((p,i)=>{
+    const tr=document.createElement('tr');
+    const total=calc(p);
+    tr.className=i===0?"first":i===1?"second":i===2?"third":"";
+    tr.innerHTML=`
+      <td class="pos">${i+1}</td>
+      <td><div class="player"><div class="avatar" style="background:${randomColor()}">${initials(p.nome)}</div><div class="pname">${p.nome}</div></div></td>
+      <td class="stat">${p.gol}</td>
+      <td class="stat">${p.assist}</td>
+      <td class="stat">${p.salvataggi}</td>
+      <td class="stat">${p.parateEpiche}</td>
+      <td class="stat">${p.autogol}</td>
+      <td class="stat">${p.falli}</td>
+      <td class="stat">${p.cleanSheet}</td>
+      <td class="total">${total}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+async function loadAndShow(){
+  const res=await fetch(CSV_URL,{cache:"no-store"});
+  const txt=await res.text();
+  const parsed=parseCSV(txt).filter(r=>r.nome);
+  
+  parsed.forEach(p=>p._tot=calc(p));
+  parsed.sort((a,b)=>b._tot-a._tot);
+  render(parsed);
+}
+loadAndShow();
+setInterval(loadAndShow,25000);
+
+/* TIMER mercoledì ore 09:00 */
+function updateTimer(){
+  const now=new Date();
+  let next=new Date();
+  next.setHours(9,0,0,0);
+  while(next.getDay()!==3){next.setDate(next.getDate()+1);}
+  if(now>next){next.setDate(next.getDate()+7);}
+  const diff=next-now;
+  const d=Math.floor(diff/86400000);
+  const h=Math.floor((diff%86400000)/3600000);
+  const m=Math.floor((diff%3600000)/60000);
+  const s=Math.floor((diff%60000)/1000);
+  document.getElementById("timer").textContent=`Prossima partita: ${d}g ${h}h ${m}m ${s}s`;
+}
+setInterval(updateTimer,1000);updateTimer();
+</script>
+</body>
+</html>
+
+
